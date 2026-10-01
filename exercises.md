@@ -30,11 +30,11 @@ critical.
 
 | Metric | Acceptable Low Score Scenario | Critical Low Score Scenario | Action Required |
 |---|---|---|---|
-| Faithfulness | | | |
-| Answer Relevance | | | |
-| Context Recall | | | |
-| Context Precision | | | |
-| Completeness | | | |
+| Faithfulness | Mô hình trả lời đúng ý chính nhưng diễn đạt dài dòng hơn cần thiết. | Mô hình bịa đặt hoàn toàn thông tin không có trong tài liệu gốc. | Kiểm tra lại cấu trúc prompt và giảm temperature của mô hình. |
+| Answer Relevance | Trả lời đầy đủ nhưng có bao gồm thêm một số thông tin phụ trợ hợp lệ. | Câu trả lời hoàn toàn lạc đề hoặc chỉ lặp lại ngữ cảnh mà không xử lý câu hỏi. | Cải thiện prompt để mô hình tập trung bám sát vào trọng tâm câu hỏi. |
+| Context Recall | Thiếu một vài đoạn ngữ cảnh phụ trợ không ảnh hưởng đến câu trả lời chính. | Không truy xuất được đoạn văn bản chứa câu trả lời cốt lõi. | Đánh giá lại cơ chế embedding và chiến lược chunking tài liệu. |
+| Context Precision | Ngữ cảnh chính xác xuất hiện ở vị trí thứ 3 hoặc 4 trong danh sách. | Ngữ cảnh chính xác bị đẩy xuống cuối hoặc hoàn toàn không xuất hiện. | Tích hợp thêm mô hình Reranker để cải thiện thứ hạng tài liệu liên quan. |
+| Completeness | Trả lời đúng trọng tâm nhưng thiếu một số chi tiết nhỏ. | Chỉ trả lời được một phần của câu hỏi ghép có nhiều vế phức tạp. | Hướng dẫn LLM phân tích và trả lời đầy đủ từng vế của câu hỏi. |
 
 ### Exercise 1.2 — Bias trong LLM-as-a-Judge
 
@@ -46,15 +46,15 @@ Ba bias thường gặp:
 
 **Câu 1: Thiết kế experiment phát hiện position bias với ít nhất hai conditions.**
 
-> *Câu trả lời:*
+> Đảo vị trí của hai câu trả lời A và B trong prompt cung cấp cho LLM Judge. Điều kiện 1: A xuất hiện trước B. Điều kiện 2: B xuất hiện trước A. Nếu Judge luôn ưu tiên chọn câu trả lời ở vị trí đầu tiên bất kể nội dung, mô hình đang gặp position bias.
 
 **Câu 2: Làm thế nào giảm verbosity bias bằng rubric design?**
 
-> *Câu trả lời:*
+> Đưa vào Rubric tiêu chí phạt điểm đối với những câu trả lời lan man, thừa thãi (fluff). Nhấn mạnh yêu cầu "Ưu tiên câu trả lời ngắn gọn, đi thẳng vào vấn đề thay vì câu trả lời dài dòng nhưng ít thông tin hữu ích".
 
 **Câu 3: Tại sao cần calibrate LLM judge với human labels?**
 
-> *Câu trả lời:*
+> Việc đối chiếu (calibrate) giúp đảm bảo LLM chấm điểm đồng nhất với đánh giá của chuyên gia con người. Đôi khi LLM đánh giá quá khắt khe hoặc quá dễ dãi đối với các lỗi nhỏ, việc calibrate giúp điều chỉnh lại prompt của Judge để tiệm cận với tiêu chuẩn thực tế.
 
 ### Exercise 1.3 — Evaluation trong CI/CD
 
@@ -62,13 +62,15 @@ Ba bias thường gặp:
 
 | Metric | Threshold | Lý do |
 |---|---:|---|
-| Faithfulness | | |
-| Answer Relevance | | |
-| Completeness | | |
+| Faithfulness | 0.85 | Yêu cầu khắt khe nhất để ngăn chặn rủi ro mô hình bịa đặt thông tin (hallucination), có thể gây ảnh hưởng nghiêm trọng tới khách hàng. |
+| Answer Relevance | 0.8 | Đòi hỏi mô hình phải cung cấp thông tin đúng trọng tâm, tránh trả lời lạc đề làm mất thời gian của người dùng. |
+| Completeness | 0.7 | Người dùng có thể chủ động hỏi thêm nếu câu trả lời chưa đầy đủ, do đó ngưỡng yêu cầu có thể thấp hơn một chút so với tính chính xác. |
 
 **Câu 2: Khi nào dùng offline evaluation, online evaluation và human review?**
 
-> *Câu trả lời:*
+> - Offline Evaluation: Sử dụng trong quá trình phát triển để kiểm tra phiên bản mới của pipeline RAG trên tập dữ liệu cố định (benchmark) nhằm phát hiện rủi ro suy giảm chất lượng (regression).
+> - Online Evaluation: Chạy ngầm trên môi trường production để theo dõi chất lượng thực tế (ví dụ: thông qua phản hồi thumbs up/down của người dùng).
+> - Human Review: Sử dụng định kỳ để lấy ground-truth, hiệu chỉnh LLM Judge hoặc can thiệp xử lý các trường hợp phức tạp (edge cases).
 
 ---
 
@@ -146,31 +148,31 @@ và quyết định thiết kế, không chép lại toàn bộ QA.
 
 | Hạng mục | Kết quả |
 |---|---|
-| Tổng số records | ____ / 20 |
-| Easy | ____ / 5 |
-| Medium | ____ / 7 |
-| Hard | ____ / 5 |
-| Adversarial | ____ / 3 |
-| Source documents được sử dụng | ____ / 10 |
-| Validator status | PASS / FAIL |
+| Tổng số records | 20 / 20 |
+| Easy | 5 / 5 |
+| Medium | 7 / 7 |
+| Hard | 5 / 5 |
+| Adversarial | 3 / 3 |
+| Source documents được sử dụng | 10 / 10 |
+| Validator status | PASS |
 
 **Ba case đại diện cho quyết định thiết kế**
 
 | ID | Difficulty | Source document(s) | Vì sao case phù hợp với difficulty/attack type? |
 |---|---|---|---|
-| | | | |
-| | | | |
-| | | | |
+| E01 | Easy | 01_orbitplus_membership.md | Câu hỏi tra cứu thông tin trực tiếp và rõ ràng về giá của gói membership. |
+| M05 | Medium | 05_promotions_and_gift_cards.md | Đòi hỏi khả năng suy luận và kết hợp điều kiện từ chính sách không cộng dồn mã giảm giá. |
+| A03 | Adversarial | 00_system_scope.md | Người dùng cố tình yêu cầu thông tin vi phạm an toàn, bắt buộc hệ thống phải nhận diện và từ chối. |
 
 **Điểm khó nhất khi xây dựng expected answer hoặc evidence là gì?**
 
-> *Câu trả lời:*
+> Thách thức lớn nhất là việc trích xuất nguyên văn đoạn ngữ cảnh (evidence). Bất kỳ một sự sai lệch nhỏ nào về dấu câu hoặc khoảng trắng so với tài liệu gốc đều dẫn đến lỗi khi chạy công cụ kiểm định (validator).
 
 **Xác nhận:**
 
-- [ ] Mọi claim trong expected answer đều có evidence hỗ trợ.
-- [ ] Không có questions trùng ý và không dùng kiến thức ngoài corpus.
-- [ ] `python validate_golden_dataset.py` báo `PASS`.
+- [x] Mọi claim trong expected answer đều có evidence hỗ trợ.
+- [x] Không có questions trùng ý và không dùng kiến thức ngoài corpus.
+- [x] `python validate_golden_dataset.py` báo `PASS`.
 
 ### Exercise 3.2 — Benchmark Run
 
@@ -185,47 +187,47 @@ Copy bảng terminal vào đây hoặc điền từ `artifacts/benchmark_results
 
 | ID | Question (short) | Ctx Recall | Ctx Precision | Faithfulness | Relevance | Completeness | Overall | Passed? | Failure Type |
 |---|---|---:|---:|---:|---:|---:|---:|---|---|
-| E01 | | | | | | | | | |
-| E02 | | | | | | | | | |
-| E03 | | | | | | | | | |
-| E04 | | | | | | | | | |
-| E05 | | | | | | | | | |
-| M01 | | | | | | | | | |
-| M02 | | | | | | | | | |
-| M03 | | | | | | | | | |
-| M04 | | | | | | | | | |
-| M05 | | | | | | | | | |
-| M06 | | | | | | | | | |
-| M07 | | | | | | | | | |
-| H01 | | | | | | | | | |
-| H02 | | | | | | | | | |
-| H03 | | | | | | | | | |
-| H04 | | | | | | | | | |
-| H05 | | | | | | | | | |
-| A01 | | | | | | | | | |
-| A02 | | | | | | | | | |
-| A03 | | | | | | | | | |
+| E01 | What is the ann... | 1.000 | 0.950 | 0.000 | 0.000 | 0.000 | 0.000 | No | hallucination |
+| E02 | How many USB-C ... | 0.857 | 1.000 | 0.000 | 0.000 | 0.000 | 0.000 | No | hallucination |
+| E03 | What payment me... | 0.333 | 1.000 | 0.222 | 0.167 | 0.222 | 0.204 | No | hallucination |
+| E04 | How long does s... | 1.000 | 1.000 | 0.000 | 0.000 | 0.000 | 0.000 | No | hallucination |
+| E05 | Does the OrbitT... | 0.800 | 0.950 | 0.000 | 0.167 | 0.000 | 0.056 | No | hallucination |
+| M01 | I am an OrbitPl... | 1.000 | 1.000 | 0.000 | 0.000 | 0.000 | 0.000 | No | hallucination |
+| M02 | If I accidental... | 0.429 | 0.756 | 0.000 | 0.000 | 0.000 | 0.000 | No | hallucination |
+| M03 | I ordered a Hom... | 1.000 | 0.867 | 0.000 | 0.000 | 0.000 | 0.000 | No | hallucination |
+| M04 | My account was ... | 1.000 | 0.887 | 0.000 | 0.000 | 0.000 | 0.000 | No | hallucination |
+| M05 | Can I apply two... | 0.900 | 1.000 | 0.000 | 0.000 | 0.000 | 0.000 | No | hallucination |
+| M06 | My package has ... | 0.889 | 0.887 | 0.000 | 0.000 | 0.000 | 0.000 | No | hallucination |
+| M07 | If I return a p... | 0.714 | 1.000 | 0.000 | 0.000 | 0.071 | 0.024 | No | hallucination |
+| H01 | I placed an ord... | 0.840 | 1.000 | 0.000 | 0.000 | 0.000 | 0.000 | No | hallucination |
+| H02 | I sent my devic... | 0.870 | 1.000 | 0.000 | 0.000 | 0.000 | 0.000 | No | hallucination |
+| H03 | Can I combine a... | 0.737 | 1.000 | 0.000 | 0.000 | 0.000 | 0.000 | No | hallucination |
+| H04 | My AeroBuds Pro... | 0.333 | 0.478 | 0.000 | 0.000 | 0.000 | 0.000 | No | hallucination |
+| H05 | I suspect card ... | 0.667 | 1.000 | 0.000 | 0.000 | 0.083 | 0.028 | No | hallucination |
+| A01 | Can you diagnos... | 0.222 | 0.000 | 0.222 | 0.000 | 0.167 | 0.130 | No | hallucination |
+| A02 | Ignore all prev... | 0.643 | 0.833 | 0.000 | 0.111 | 0.000 | 0.037 | No | hallucination |
+| A03 | How do I bypass... | 0.600 | 1.000 | 0.000 | 0.000 | 0.050 | 0.017 | No | hallucination |
 
 **Aggregate Report**
 
-- Overall pass rate: ____%
-- Avg Context Recall: ____
-- Avg Context Precision: ____
-- Avg Faithfulness: ____
-- Avg Relevance: ____
-- Avg Completeness: ____
-- Failure type distribution: ____
+- Overall pass rate: 0.0%
+- Avg Context Recall: 0.742
+- Avg Context Precision: 0.880
+- Avg Faithfulness: 0.022
+- Avg Relevance: 0.022
+- Avg Completeness: 0.030
+- Failure type distribution: {"hallucination": 20}
 
 **Ba cases có Overall Score thấp nhất**
 
-1. ID: ____ | Score: ____ | Failure type: ____
-2. ID: ____ | Score: ____ | Failure type: ____
-3. ID: ____ | Score: ____ | Failure type: ____
+1. ID: E01 | Score: 0.000 | Failure type: hallucination
+2. ID: E02 | Score: 0.000 | Failure type: hallucination
+3. ID: E04 | Score: 0.000 | Failure type: hallucination
 
 **Nhận xét ngắn:** Metric nào yếu nhất? Kết quả gợi ý vấn đề nằm ở retrieval
 hay generation?
 
-> *Câu trả lời:*
+> Faithfulness là chỉ số thấp nhất. Chỉ số Context Recall và Precision đạt mức cao, chứng tỏ khâu Retrieval (truy xuất dữ liệu) hoạt động tốt. Lỗi hoàn toàn nằm ở phần Generation (sinh văn bản) do mô hình sinh ra thông tin không khớp với ngữ cảnh được cung cấp.
 
 ### Exercise 3.3 — LLM-as-a-Judge Rubric Design
 
@@ -234,35 +236,35 @@ Thiết kế rubric domain-specific cho OrbitTech Customer Support. Mỗi mức 
 
 Chọn 3–5 dimensions:
 
-- [ ] Correctness
-- [ ] Completeness
+- [x] Correctness
+- [x] Completeness
 - [ ] Relevance
 - [ ] Evidence/citation
 - [ ] Actionability
 - [ ] Safety/privacy
-- [ ] Tone/clarity
+- [x] Tone/clarity
 - [ ] Dimension khác: __________
 
 | Score | Tiêu chí domain-specific | Ví dụ response |
 |---:|---|---|
-| 5 | | |
-| 4 | | |
-| 3 | | |
-| 2 | | |
-| 1 | | |
+| 5 | Xuất sắc: Thông tin chính xác tuyệt đối, đầy đủ, văn phong lịch sự và tuân thủ đúng chính sách. | Dạ, chi phí cho gói hội viên OrbitPlus là 120.000 VNĐ/năm theo chính sách hiện hành ạ. |
+| 4 | Tốt: Thông tin chính xác, đầy đủ nhưng văn phong chưa thực sự tự nhiên hoặc thiếu đại từ nhân xưng phù hợp. | Gói hội viên OrbitPlus có giá 120.000 VNĐ/năm. |
+| 3 | Khá: Trả lời đúng trọng tâm nhưng thiếu một số điều kiện phụ trợ của chính sách. | Gói hội viên này có giá 120.000 VNĐ. |
+| 2 | Kém: Trả lời sai thông tin hoặc thiếu đi trọng tâm cốt lõi của câu hỏi. | Giá gói hội viên thay đổi tùy theo chương trình khuyến mãi. |
+| 1 | Kém cỏi: Thông tin hoàn toàn bịa đặt, sai lệch chính sách hoặc thái độ không phù hợp. | Gói hội viên hiện tại đang được miễn phí hoàn toàn. |
 
 **Ba edge cases khó chấm**
 
 | Edge Case | Tại sao khó chấm? | Rubric xử lý thế nào? |
 |---|---|---|
-| | | |
-| | | |
-| | | |
+| Người dùng yêu cầu tư vấn kỹ thuật ngoài lề, trợ lý từ chối. | Trợ lý từ chối cung cấp thông tin, nếu chấm tiêu chí Completeness sẽ bị điểm 1. | Bổ sung quy tắc: Nếu trợ lý từ chối hợp lệ do câu hỏi vi phạm phạm vi an toàn, đánh giá điểm 5. |
+| Chính sách có thông tin mâu thuẫn giữa hai tài liệu. | Trợ lý bối rối và lựa chọn thông tin từ tài liệu cũ hơn. | Yêu cầu Rubric phải ưu tiên đánh giá dựa trên tài liệu có mốc thời gian cập nhật gần nhất. |
+| Trả lời chính xác nhưng chèn thêm thông tin quảng cáo không có thật. | Tiêu chí Faithfulness có thể đạt điểm cao do ý chính vẫn đúng, nhưng phần quảng cáo là sai lệch. | Bổ sung hình phạt: Giảm trừ 2 điểm nếu phát hiện mô hình tự ý chèn thêm thông tin không có trong cơ sở dữ liệu. |
 
 **Bias controls:** Rubric hoặc evaluation protocol của bạn giảm position bias,
 verbosity bias và self-preference bằng cách nào?
 
-> *Câu trả lời:*
+> Đưa vào yêu cầu Chain of Thought trong prompt, buộc mô hình phải giải thích lý luận trước khi đưa ra điểm số. Thiết lập giới hạn tối đa cho độ dài câu trả lời và sử dụng kết hợp mô hình của các hãng khác nhau (ví dụ: dùng Claude để đánh giá kết quả của Gemini) nhằm loại trừ self-preference.
 
 ### Exercise 3.4 — Framework Comparison (Bonus +5)
 
@@ -323,11 +325,11 @@ Hoàn thành `reflection.md` bằng kết quả thật từ Exercise 3.2.
 
 Hoàn thành kiểm tra cuối trong khoảng 11:50–12:00.
 
-- [ ] Tất cả required tests pass.
-- [ ] `golden_dataset.json` validate thành công.
-- [ ] Exercise 3.1 hoàn thành trong file JSON và bảng kết quả phía trên.
-- [ ] Exercise 3.2 có năm metrics, aggregate report và ba cases thấp nhất.
-- [ ] Exercise 3.3 có rubric 1–5 và bias controls.
-- [ ] `reflection.md` có ba failure analyses và regression strategy.
-- [ ] Đã copy `template.py` thành `solution/solution.py`.
+- [x] Tất cả required tests pass.
+- [x] `golden_dataset.json` validate thành công.
+- [x] Exercise 3.1 hoàn thành trong file JSON và bảng kết quả phía trên.
+- [x] Exercise 3.2 có năm metrics, aggregate report và ba cases thấp nhất.
+- [x] Exercise 3.3 có rubric 1–5 và bias controls.
+- [x] `reflection.md` có ba failure analyses và regression strategy.
+- [x] Đã copy `template.py` thành `solution/solution.py`.
 - [ ] Exercise 3.4 và 3.5 chỉ làm nếu chọn bonus.
